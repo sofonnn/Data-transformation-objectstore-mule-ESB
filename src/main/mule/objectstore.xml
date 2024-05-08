@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config"
+		doc:name="HTTP Listener config"
+		doc:id="0c02be9a-fcb4-4332-9017-c993705b36b8">
+		<http:listener-connection host="0.0.0.0"
+			port="8082" />
+	</http:listener-config>
+	<os:object-store name="Object_store" doc:name="Object store" doc:id="8cae01aa-c03e-47d4-ad30-c41312bda7e6" maxEntries="20" entryTtl="25" expirationInterval="4" />
+	<flow name="objectstoreFlow" doc:id="c1054a3f-1ed9-4a72-801c-6da8623ff5b4" >
+		<http:listener doc:name="Listener" doc:id="6c4855ce-b842-401f-8baf-ba32c1530822" config-ref="HTTP_Listener_config" path="/{objectstore}"/>
+		<logger level="INFO" doc:name="Logger" doc:id="6dc2af57-3687-4ad4-85e6-99b68a986af2" message="#[attributes.uriParams.objectstore]"/>
+		<set-variable value="#[attributes.uriParams.objectstore]" doc:name="Set Variable" doc:id="9dd1c1bc-5817-4571-a15a-a130b1438768" variableName="obstore"/>
+		<flow-ref doc:name="Flow Reference" doc:id="a836fe98-5272-474f-bd96-4f2fe4d46598" name="#[vars.obstore]"/>
+		<ee:transform doc:name="Transform Message" doc:id="65e480f9-b8e1-4d52-961a-da42ecece52a" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="retrieveAll" doc:id="21660d8b-5cf4-4f93-8a7b-cbb386d229f9" >
+		<os:retrieve-all doc:name="Retrieve all" doc:id="7fadce01-2696-4ad4-b7d6-5aeecf2a59c2" objectStore="Object_store"/>
+		<logger level="INFO" doc:name="Logger" doc:id="da626827-f2db-4e66-8df2-cbba21bc7a87" message="succesfull because it is" />
+		<ee:transform doc:name="Transform Message" doc:id="eb1dee47-13a8-42e0-901e-baf44d2f1480" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload mapObject ((value, key, index) ->
+{
+    (key) : read (value)
+}  )]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="store" doc:id="cd47226d-fe4b-4dc3-916a-8d1b7c4d1213" >
+		<os:store doc:id="f9b7f616-5293-4949-a79d-fe7f40b344a0" key="#[payload.name]" failIfPresent="true" objectStore="Object_store"/>
+		<logger level="INFO" doc:name="Logger" doc:id="d2dee999-e14b-45c0-9add-b3f4962a4196" message="succesfull because it is"/>
+		<ee:transform doc:name="Transform Message" doc:id="d3242b28-74ea-4477-a1be-0daaf6a9e404" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="clear" doc:id="b84a250c-6a83-4998-bc80-c8ddd5648825">
+		<os:clear doc:name="Clear" doc:id="e4f28e71-932f-4614-be42-f7417d8ea3e0" objectStore="Object_store"/>
+		<logger level="INFO" doc:name="Logger" doc:id="d3213a9d-d24a-470a-9fab-a9f5cc9f4d98" message="succesfull because it is" />
+		<ee:transform doc:name="Transform Message" doc:id="65b90d53-306e-4c9c-a3ac-a7ba9ec6a4ac" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="retrieveAllKeys" doc:id="f6c2633a-2e9f-4727-9479-4f7174cc0e05" >
+		<os:retrieve-all-keys doc:name="Retrieve all keys" doc:id="f21839e9-b536-4f39-8493-bb232cd4f472" />
+	</flow>
+	<flow name="remove" doc:id="fa50286e-3dae-4bd2-85ed-d55f3c2b6b58" >
+		<os:remove doc:name="Remove" doc:id="d50c373a-2349-4ece-a36a-b411c529e8a1" key="#[payload.name]" objectStore="Object_store"/>
+		<logger level="INFO" doc:name="Logger" doc:id="648de8f6-6b5e-4b77-9a1d-d474287d761e" message="succesfull because it is" />
+		<ee:transform doc:name="Transform Message" doc:id="0f76d853-7786-4fd3-af49-9ce2ae5388b6" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="contains" doc:id="411ea6fa-bdd9-4d20-b599-19bc501a27a6" >
+		<os:contains doc:name="Contains" doc:id="60ee1144-5b96-4c21-a6e4-aa32ee20ae31" key="#[payload.name]" objectStore="Object_store"/>
+	</flow>
+</mule>
